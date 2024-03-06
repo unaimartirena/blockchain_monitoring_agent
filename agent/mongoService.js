@@ -1,7 +1,7 @@
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
-const url = process.env.DATABASE_URL; // Ensure this is set in your environment
-// const url = "mongodb://mongo:27017"; // Ensure this is set in your environment
+const url = process.env.DATABASE_URL;
+// const url = "mongodb://mongo:27017";
 const dbName = 'blockchain';
 
 let mongoDb = null;

@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "mongodb": "^6.4.0",
+    "uuid": "^9.0.1"
+  }
+}

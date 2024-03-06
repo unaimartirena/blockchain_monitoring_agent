@@ -80,3 +80,4 @@ Advantages:
 * Add a proper logging system, ELK or similar.
 * Analyze historical data in order to properly configure the different threshold variables.
 * Improve the frontend application in order to adjust the different thresholds and modifiers.
+* Increment the total amount of unit and integration tests.
