@@ -1,0 +1,59 @@
+version: '3.8'
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_SERVER_URL: http://localhost:3001
+    container_name: blockchain-monitoring-client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - blockchain-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: blockchain-monitoring-server
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: "mongodb://mongo:27017"
+    depends_on:
+      - mongo
+    networks:
+      - blockchain-network
+
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: blockchain-monitoring-agent
+    environment:
+      DATABASE_URL: "mongodb://mongo:27017"
+    depends_on:
+      - mongo
+    networks:
+      - blockchain-network
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - blockchain-network
+
+networks:
+  blockchain-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+    driver: local

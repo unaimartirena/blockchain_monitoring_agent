@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "ethers": "^5.7.2",
+    "mongodb": "^6.4.0",
+    "uuid": "^9.0.1"
+  },
+  "name": "agent",
+  "version": "1.0.0",
+  "main": "newMintedBlocksMonitoringAgent.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
