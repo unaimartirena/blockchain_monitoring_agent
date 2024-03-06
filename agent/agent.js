@@ -1,10 +1,8 @@
 const { ethers } = require('ethers');
 
-// Import the MongoDB client
-const { MongoClient } = require('mongodb');
-const { v4: uuidv4 } = require('uuid');
-
-const provider = new ethers.providers.WebSocketProvider('wss://mainnet.infura.io/ws/v3/c815f60fda364fd0aa960c3226f6a144');
+const { getBlockWithTransactions, getTransactionReceipt, provider } = require('./etherService');
+const { addAlert, addTransaction, insertAlerts, insertTransactions, insertBlock, insertBlockAnalysis } = require('./mongoService');
+const { calculateTPS, calculateBlockMiningTime } = require('./blockService');
 
 const HIGH_VALUE_TRANSACTIONS_THRESHOLD = 100; // Flag transactions having a value greater than the average.
 const FAILED_TRANSACTIONS_PER_BLOCK_PERCENTAGE_THRESHOLD = 0.1;
@@ -17,8 +15,6 @@ let blockQueue = [];
 // Flag to indicate if a block is currently being processed
 let isProcessing = false;
 
-let mongoDb = null;
-
 provider.on("block", async (blockNumber) => {
   console.log(`New block mined ${blockNumber}. Analyzing: ...`);
   blockQueue.push(blockNumber); // Add the new block number to the queue
@@ -26,12 +22,7 @@ provider.on("block", async (blockNumber) => {
 });
 
 async function checkQueue() {
-  if (mongoDb === null) {
-    // Singleton
-    mongoDb = await mongoClient();
-  }
   if (blockQueue.length > 0 && !isProcessing) {
-
     const nextBlockNumber = blockQueue.shift(); // Remove the next block from the queue
     processBlockWithTransactions(nextBlockNumber).catch(console.error);
   }
@@ -43,7 +34,7 @@ async function processBlockWithTransactions(currentBlockNumber) {
     console.log(`Starting processing of block #${currentBlockNumber}`);
 
     // Get current and previous blocks
-    const currentBlock = await provider.getBlockWithTransactions(currentBlockNumber);
+    const currentBlock = await getBlockWithTransactions(currentBlockNumber);
 
     // Initialize block variables
     const transactionsAverageGasUsed = currentBlock.gasUsed.div(currentBlock.transactions.length);
@@ -62,7 +53,7 @@ async function processBlockWithTransactions(currentBlockNumber) {
     const amountOfTransactionsInBlock = currentBlock.transactions.length;
 
     for (const tx of currentBlock.transactions) {
-      const receipt = await provider.getTransactionReceipt(tx.hash);
+      const receipt = await getTransactionReceipt(tx.hash);
 
       // Monitor contract creations
       if (tx.to === null) {
@@ -140,111 +131,3 @@ async function processBlockWithTransactions(currentBlockNumber) {
 };
 
 console.log("Subscribed to new Ethereum blocks...");
-
-async function mongoClient() {
-  // Connection URL and Database Name
-  // const url = 'mongodb://mongo:27017'; // Replace with your MongoDB URI if not local
-  const url = process.env.DATABASE_URL;
-  console.log(`process.env.DATABASE_URL: ${url}`);
-  const dbName = 'blockchain'; // Replace with your database name
-
-  const client = new MongoClient(url); 
-
-  await client.connect();
-  console.log('Connected successfully to mongo server');
-  return client.db(dbName);
-}
-
-function addAlert(blockNumber, txHash, alertMsg, alerts) {
-  let alert = {
-    _id: uuidv4(), created: new Date(),
-    blockNumber: blockNumber,
-    txHash: txHash,
-    alertMsg: alertMsg
-  }
-  alerts.push(alert);
-}
-
-async function insertAlerts(alerts) {
-  const transactionCollection = mongoDb.collection('alert')
-  await transactionCollection.insertMany(alerts);
-  console.log(`Inserted ${alerts.length} alerts in MongoDB:`);
-}
-
-
-function addTransaction(blockNumber, tx, receipt, transactionsToSave) {
-  let transaction = {
-    _id: uuidv4(), created: new Date(),
-    blockNumber: blockNumber,
-    transaction: tx,
-    receipt: receipt
-  }
-  transactionsToSave.push(transaction);
-}
-
-async function insertTransactions(transactions) {
-  const transactionCollection = mongoDb.collection('transaction')
-  await transactionCollection.insertMany(transactions);
-  console.log(`Inserted ${transactions.length} transaction documents in the DB:`);
-}
-
-async function insertBlock(block) {
-  let blockToSave = {
-    _id: uuidv4(), 
-    created: new Date(),
-    blockNumber: block.number,
-    block: block
-  }
-  const transactionsCollection = mongoDb.collection('block');
-  await transactionsCollection.insertOne(blockToSave);
-  console.log(`Inserted ${block.number} block document in the DB:`);
-}
-
-async function insertBlockAnalysis(block, transactionsWithHighGasUsageCount, transactionsPerSecond, blockMiningTime, failedTransactionCount, contractCreationCount, highValueTransactions, averageGasPriceVolatility) {
-  let blockAnalysisToSave = {
-    _id: uuidv4(), 
-    created: new Date(),
-    blockNumber: block.number,
-    transactionsWithHighGasUsageCount: transactionsWithHighGasUsageCount,
-    transactionsPerSecond: transactionsPerSecond,
-    blockMiningTime: blockMiningTime,
-    failedTransactionsCount: failedTransactionCount,
-    contractCreationCount: contractCreationCount,
-    highValueTransactions: highValueTransactions,
-    averageGasPriceVolatility: averageGasPriceVolatility.toString()
-  }
-  const blockAnalysisCollection = mongoDb.collection('blockAnalysis');
-  await blockAnalysisCollection.insertOne(blockAnalysisToSave);
-  console.log(`Inserted ${block.number} blockAnalysis document in the DB:`);
-}
-
-async function calculateTPS(currentBlock) {
-  let previousBlock = await provider.getBlock(currentBlock.number - 1);
-  // Get the timestamp of the start block.
-  let previousBlockTimestamp = previousBlock.timestamp;
-  // Get the timestamp of the end block.
-  let currentBlockTimestamp = currentBlock.timestamp;
-  let totalTransactions = currentBlock.transactions.length;
-
-  const timeDiff = currentBlockTimestamp - previousBlockTimestamp; // Time difference in seconds.
-  const tps = totalTransactions / timeDiff; // Transactions per second.
-
-  console.log(`TPS: ${tps}`);
-
-  return tps;
-}
-
-async function calculateBlockMiningTime(currentBlock) {
-  let previousBlock = await provider.getBlock(currentBlock.number - 1);
-  // Get the timestamp of the start block.
-  let previousBlockTimestamp = previousBlock.timestamp;
-  // Get the timestamp of the end block.
-  let currentBlockTimestamp = currentBlock.timestamp;
-
-  const timeDiff = currentBlockTimestamp - previousBlockTimestamp; // Time difference in seconds.
-
-  console.log(`Block mining time: ${timeDiff} seconds`);
-
-  return timeDiff;
-}
-
