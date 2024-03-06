@@ -11,15 +11,6 @@ const FAILED_TRANSACTIONS_PER_BLOCK_PERCENTAGE_THRESHOLD = 0.1;
 const CONTRACT_CREATION_TRANSACTIONS_PER_BLOCK_PERCENTAGE_THRESHOLD = 0.1;
 const HIGH_GAS_USAGE_MODIFIER = 2;
 
-// TO BE IMPROVED: 
-// * Save the received blocknumbers on a mongodb collection and implement a job that runs in the background that processes the received blocks. 
-//   This job will need to have the proper retry mechanism so any processing failure is properly retried.
-// * Implement another background job that checks if there is any gap in the block numbers sequence in the mongodb collection. If this is the case, due to any unexpected failure
-//   in the listener, the gap should be filled and the first background job should query the blockchain to obtain the missing blocks data and process them.
-// * Implement transactionality.
-// * Add a proper logging system, ELK or similar.
-// * Analyze historical data in order to properly configure the different threshold variables.
-
 // Queue to hold the block numbers
 let blockQueue = [];
 
